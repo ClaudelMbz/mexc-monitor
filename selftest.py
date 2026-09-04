@@ -11,6 +11,6 @@ if __name__ == "__main__":
     syms = client.list_symbols()
     print(f"exchangeInfo OK : {len(syms)} paires spot")
     meta = syms.get("BTCUSDT", {"symbol": "BTCUSDT", "baseAsset": "BTC", "quoteAsset": "USDT"})
-    summary = track_symbol(client, "BTCUSDT", meta, duration=20, interval=5)
+    summary = track_symbol(client, "BTCUSDT", meta, duration=15, interval=3)
     print("resume:", summary)
     print("Ouvre data/dashboard.html et data/listings/BTCUSDT_*/chart.html")

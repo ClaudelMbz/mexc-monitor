@@ -25,12 +25,14 @@ def build_dashboard():
             f"<tr>"
             f"<td><a href='listings/{name}/chart.html'>{i.get('symbol')}</a></td>"
             f"<td>{i.get('detected_at')}</td>"
+            f"<td>{_fmt(i.get('wait_seconds'), ' s')}</td>"
             f"<td style='color:{color};font-weight:600'>{_fmt(chg, '%')}</td>"
             f"<td>{_fmt(i.get('max_runup_pct'), '%')}</td>"
             f"<td>{_fmt(i.get('max_drawdown_pct'), '%')}</td>"
             f"<td>{_fmt(i.get('open'))}</td>"
             f"<td>{_fmt(i.get('last'))}</td>"
             f"<td>{_fmt(i.get('samples'))}</td>"
+            f"<td>{_fmt(i.get('status'))}</td>"
             f"</tr>"
         )
 
@@ -54,9 +56,9 @@ def build_dashboard():
 <h1>MEXC - nouveaux listings detectes</h1>
 <p>Genere {now} UTC &middot; {len(rows)} listing(s) &middot; rafraichir la page pour la mise a jour</p>
 <table>
-<tr><th>Symbole</th><th>Detecte (UTC)</th><th>&Delta;%</th><th>Run-up</th><th>Drawdown</th>
-<th>Open</th><th>Last</th><th>Samples</th></tr>
-{''.join(cards) or "<tr><td colspan='8'>Aucun listing detecte pour l'instant.</td></tr>"}
+<tr><th>Symbole</th><th>Detecte (UTC)</th><th>Attente T2&rarr;T3</th><th>&Delta;%</th>
+<th>Run-up</th><th>Drawdown</th><th>Open</th><th>Last</th><th>Samples</th><th>Statut</th></tr>
+{''.join(cards) or "<tr><td colspan='10'>Aucun listing detecte pour l'instant.</td></tr>"}
 </table>
 </body></html>"""
     (DATA_DIR / "dashboard.html").write_text(html, encoding="utf-8")
