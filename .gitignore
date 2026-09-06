@@ -1,8 +1,5 @@
 .env
 __pycache__/
 *.pyc
-data/known_symbols.json
-data/detections.jsonl
-data/dashboard.html
-data/listings/
+data/
 .venv/

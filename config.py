@@ -29,10 +29,18 @@ PRICE_WAIT_POLL_SECONDS = float(os.getenv("PRICE_WAIT_POLL_SECONDS", "3"))
 # Au-dela de ce delai sans aucun prix, on abandonne le suivi de cette paire.
 PRICE_WAIT_TIMEOUT_SECONDS = int(os.getenv("PRICE_WAIT_TIMEOUT_SECONDS", "7200"))
 
-# Phase 2 : fenetre de mesure, comptee A PARTIR DU PREMIER PRIX REEL (T3).
+# Phase 2 : fenetre de mesure tick, comptee A PARTIR DU PREMIER PRIX REEL (T3).
 TRACK_DURATION_SECONDS = int(os.getenv("TRACK_DURATION_SECONDS", "180"))
-# Intervalle d'echantillonnage pendant la mesure.
+# Intervalle d'echantillonnage pendant la mesure tick.
 TRACK_SAMPLE_INTERVAL_SECONDS = float(os.getenv("TRACK_SAMPLE_INTERVAL_SECONDS", "2"))
+
+# Phase 3 : suivi des bougies 1m pour voir spike -> repli -> stabilisation.
+# Duree totale d'observation en minutes (a partir du premier prix). Le pic
+# arrive souvent plusieurs heures apres le listing -> 120 min par defaut.
+# (l'API MEXC ne sert que ~500 bougies 1m, soit ~8 h max.)
+KLINE_FOLLOW_MINUTES = int(os.getenv("KLINE_FOLLOW_MINUTES", "120"))
+# Cadence de rafraichissement des bougies pendant cette phase (secondes).
+KLINE_POLL_SECONDS = float(os.getenv("KLINE_POLL_SECONDS", "30"))
 
 # Filtre optionnel sur la devise de cotation. Vide = toutes les paires.
 QUOTE_FILTER = os.getenv("QUOTE_FILTER", "").strip().upper()

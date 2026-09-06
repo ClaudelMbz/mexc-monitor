@@ -62,6 +62,18 @@ class MexcClient:
             }
         return out
 
+    def klines(self, symbol, interval="1m", limit=1000, start_time=None, end_time=None):
+        """Bougies OHLCV. Renvoie une liste de listes :
+        [open_time_ms, open, high, low, close, volume, close_time_ms, quote_volume].
+        Marche meme si on interroge longtemps apres le listing : on recupere
+        tout l'historique depuis la 1ere bougie (limit=1000 -> ~16 h en 1m)."""
+        params = {"symbol": symbol, "interval": interval, "limit": limit}
+        if start_time is not None:
+            params["startTime"] = int(start_time)
+        if end_time is not None:
+            params["endTime"] = int(end_time)
+        return self._get("/api/v3/klines", params)
+
     def book_ticker(self, symbol):
         return self._get("/api/v3/ticker/bookTicker", {"symbol": symbol})
 
