@@ -2,7 +2,7 @@
 import json
 from datetime import datetime, timezone
 
-from config import DATA_DIR, LISTINGS_DIR
+from config import DATA_DIR, LISTINGS_DIR, atomic_write
 
 
 def _fmt(v, suffix=""):
@@ -22,7 +22,10 @@ def build_dashboard():
         summary = d / "summary.json"
         if not d.is_dir() or not summary.exists():
             continue
-        rows.append((d.name, json.loads(summary.read_text(encoding="utf-8"))))
+        try:
+            rows.append((d.name, json.loads(summary.read_text(encoding="utf-8"))))
+        except (json.JSONDecodeError, OSError):
+            continue  # fichier en cours d'ecriture par un autre process : on saute
 
     cards = []
     for name, i in rows:
@@ -83,7 +86,7 @@ def build_dashboard():
 {''.join(cards) or "<tr><td colspan='11'>Aucun listing detecte pour l'instant.</td></tr>"}
 </table></div>
 </body></html>"""
-    (DATA_DIR / "dashboard.html").write_text(html, encoding="utf-8")
+    atomic_write(DATA_DIR / "dashboard.html", html)
     return DATA_DIR / "dashboard.html"
 
 

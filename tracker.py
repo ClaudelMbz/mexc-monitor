@@ -25,6 +25,7 @@ from config import (
     PRICE_WAIT_TIMEOUT_SECONDS,
     TRACK_DURATION_SECONDS,
     TRACK_SAMPLE_INTERVAL_SECONDS,
+    atomic_write,
 )
 from dashboard import build_dashboard
 
@@ -90,7 +91,7 @@ def _write_klines_csv(outdir, klines, t0_ms):
                 minute, k["open"], k["high"], k["low"], k["close"],
                 k["volume"], k["quote_volume"],
             ])
-    (outdir / "klines.json").write_text(json.dumps(klines, indent=1), encoding="utf-8")
+    atomic_write(outdir / "klines.json", json.dumps(klines, indent=1))
 
 
 # --------------------------------------------------------------------------- #
@@ -340,7 +341,7 @@ new Chart(document.getElementById('c'), {{
 }});
 </script>
 </body></html>"""
-    (outdir / "chart.html").write_text(html, encoding="utf-8")
+    atomic_write(outdir / "chart.html", html)
 
 
 def _make_tick_png(outdir, symbol, samples, s):
@@ -394,15 +395,25 @@ new Chart(document.getElementById('c'), {{ type:'line',
     scales:{{x:{{title:{{display:true,text:'minutes depuis T3'}}}},
             y:{{title:{{display:true,text:'prix'}}}}}}}}}});
 </script></body></html>"""
-    (outdir / "chart_ticks.html").write_text(html, encoding="utf-8")
+    atomic_write(outdir / "chart_ticks.html", html)
 
 
 def _finalize(outdir, symbol, detected_at, meta, samples, klines, t0_ms,
               first_price_at, wait_seconds, status, log):
+    # Ne jamais regresser : si on n'a pas (ou moins) de bougies en memoire mais
+    # qu'un klines.json plus complet existe deja sur disque, on le reutilise.
+    disk = outdir / "klines.json"
+    if disk.exists():
+        try:
+            saved = json.loads(disk.read_text(encoding="utf-8"))
+            if len(saved) > len(klines):
+                klines = saved
+        except (json.JSONDecodeError, OSError):
+            pass
     summary = _summarize_ticks(symbol, detected_at, meta, samples,
                                first_price_at, wait_seconds, status)
     summary.update(_analyze_klines(klines, t0_ms, detected_at))
-    (outdir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    atomic_write(outdir / "summary.json", json.dumps(summary, indent=2))
     for fn, args in ((_make_kline_png, (outdir, symbol, klines, t0_ms, summary)),
                      (_make_kline_html, (outdir, symbol, klines, t0_ms, summary)),
                      (_make_tick_png, (outdir, symbol, samples, summary)),
@@ -445,12 +456,11 @@ def track_symbol(client, symbol, meta, stop_event=None,
     t0_ms = int(detected_at.timestamp() * 1000)
     outdir = LISTINGS_DIR / f"{symbol}_{detected_at.strftime('%Y%m%d_%H%M%S')}"
     outdir.mkdir(parents=True, exist_ok=True)
-    (outdir / "meta.json").write_text(json.dumps(
+    atomic_write(outdir / "meta.json", json.dumps(
         {"symbol": symbol, "detected_at": detected_at.isoformat(), "info": meta,
          "wait_poll_s": wait_poll, "wait_timeout_s": wait_timeout,
          "duration_s": duration, "interval_s": interval,
-         "follow_minutes": follow_minutes, "kline_poll_s": kline_poll}, indent=2),
-        encoding="utf-8")
+         "follow_minutes": follow_minutes, "kline_poll_s": kline_poll}, indent=2))
 
     detect_mono = time.monotonic()
     first_price_mono = None

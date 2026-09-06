@@ -12,7 +12,7 @@ import json
 import statistics as st
 from datetime import datetime, timezone
 
-from config import DATA_DIR, LISTINGS_DIR
+from config import DATA_DIR, LISTINGS_DIR, atomic_write
 
 
 def _load_summaries():
@@ -96,7 +96,7 @@ def build_aggregate():
         "context": context,
         "strategies": strategies,
     }
-    (DATA_DIR / "aggregate.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    atomic_write(DATA_DIR / "aggregate.json", json.dumps(result, indent=2))
     _write_html(result)
     _print(result)
     return result
@@ -169,7 +169,7 @@ def _write_html(r):
 <th>p25..p75 (best)</th><th>med end (tenu)</th></tr>
 {strat_rows or "<tr><td colspan=6>-</td></tr>"}</table>
 </body></html>"""
-    (DATA_DIR / "aggregate.html").write_text(html, encoding="utf-8")
+    atomic_write(DATA_DIR / "aggregate.html", html)
 
 
 if __name__ == "__main__":

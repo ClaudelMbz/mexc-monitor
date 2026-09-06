@@ -5,25 +5,71 @@ nouvelle paire apparait, lance en parallele un suivi de prix sur 5 minutes.
 
 Ctrl+C pour arreter (les suivis en cours se terminent proprement).
 """
+import atexit
 import json
+import os
 import signal
+import sys
 import threading
 import time
 from datetime import datetime, timezone
 
 from config import (
     CHECK_INTERVAL_SECONDS,
+    DATA_DIR,
     DETECTIONS_LOG,
     KNOWN_SYMBOLS_FILE,
     QUOTE_FILTER,
+    atomic_write,
 )
 from dashboard import build_dashboard
 from mexc_client import MexcClient
 from tracker import track_symbol
 
+LOCK_FILE = DATA_DIR / "monitor.lock"
+
 
 def _ts():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _pid_alive(pid):
+    if not pid:
+        return False
+    if os.name == "nt":
+        try:
+            import ctypes
+            h = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED_INFO
+            if h:
+                ctypes.windll.kernel32.CloseHandle(h)
+                return True
+            return False
+        except Exception:
+            return True  # dans le doute, on considere qu'il tourne
+    try:
+        os.kill(pid, 0)
+        return True
+    except (OSError, ProcessLookupError):
+        return False
+
+
+def acquire_lock():
+    """Empeche deux monitor.py de tourner sur le meme data/ (source de courses
+    sur known_symbols.json / dashboard.html / summary.json)."""
+    if LOCK_FILE.exists():
+        try:
+            other = int(LOCK_FILE.read_text().strip() or "0")
+        except (ValueError, OSError):
+            other = 0
+        if other and other != os.getpid() and _pid_alive(other):
+            print(f"[{_ts()}] ERREUR : un monitor tourne deja (PID {other}). "
+                  f"Arrete-le, ou supprime {LOCK_FILE} s'il est mort.")
+            sys.exit(1)
+        print(f"[{_ts()}] verrou orphelin (PID {other}) ignore.")
+    LOCK_FILE.write_text(str(os.getpid()), encoding="utf-8")
+    atexit.register(lambda: LOCK_FILE.exists() and
+                    LOCK_FILE.read_text().strip() == str(os.getpid()) and
+                    LOCK_FILE.unlink(missing_ok=True))
 
 
 def load_known():
@@ -36,9 +82,7 @@ def load_known():
 
 
 def save_known(symbols):
-    tmp = KNOWN_SYMBOLS_FILE.with_name(KNOWN_SYMBOLS_FILE.name + ".tmp")
-    tmp.write_text(json.dumps(symbols, indent=2), encoding="utf-8")
-    tmp.replace(KNOWN_SYMBOLS_FILE)
+    atomic_write(KNOWN_SYMBOLS_FILE, json.dumps(symbols, indent=2))
 
 
 def log_detection(entry):
@@ -47,6 +91,7 @@ def log_detection(entry):
 
 
 def main():
+    acquire_lock()
     client = MexcClient()
     stop = threading.Event()
 

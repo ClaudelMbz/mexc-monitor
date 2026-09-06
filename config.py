@@ -47,3 +47,13 @@ QUOTE_FILTER = os.getenv("QUOTE_FILTER", "").strip().upper()
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 LISTINGS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def atomic_write(path, text):
+    """Ecrit via un fichier temporaire + rename : jamais de fichier a moitie
+    ecrit, meme si le process est tue ou si deux process ecrivent en meme temps."""
+    path = Path(path)
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)
+
