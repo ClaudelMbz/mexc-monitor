@@ -49,11 +49,24 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 LISTINGS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def atomic_write(path, text):
+def atomic_write(path, text, retries=6, delay=0.25):
     """Ecrit via un fichier temporaire + rename : jamais de fichier a moitie
-    ecrit, meme si le process est tue ou si deux process ecrivent en meme temps."""
+    ecrit, meme si le process est tue ou si deux process ecrivent en meme temps.
+
+    Sous Windows, le rename peut echouer (WinError 5) si la cible est ouverte
+    par un autre programme (navigateur, IDE, antivirus) -> on retente."""
+    import time as _t
+
     path = Path(path)
     tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     tmp.write_text(text, encoding="utf-8")
-    tmp.replace(path)
+    for attempt in range(retries):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            if attempt == retries - 1:
+                tmp.unlink(missing_ok=True)
+                raise
+            _t.sleep(delay)
 

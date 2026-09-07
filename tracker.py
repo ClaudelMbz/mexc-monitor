@@ -399,7 +399,7 @@ new Chart(document.getElementById('c'), {{ type:'line',
 
 
 def _finalize(outdir, symbol, detected_at, meta, samples, klines, t0_ms,
-              first_price_at, wait_seconds, status, log):
+              first_price_at, wait_seconds, status, log, dashboard_min_interval=0.0):
     # Ne jamais regresser : si on n'a pas (ou moins) de bougies en memoire mais
     # qu'un klines.json plus complet existe deja sur disque, on le reutilise.
     disk = outdir / "klines.json"
@@ -423,7 +423,7 @@ def _finalize(outdir, symbol, detected_at, meta, samples, klines, t0_ms,
         except Exception as e:
             log(f"[{symbol}] {fn.__name__}: {e}")
     try:
-        build_dashboard()
+        build_dashboard(min_interval=dashboard_min_interval)
     except Exception as e:
         log(f"[{symbol}] dashboard: {e}")
     return summary
@@ -531,7 +531,8 @@ def track_symbol(client, symbol, meta, stop_event=None,
                 _write_klines_csv(outdir, klines, t0_ms)
                 _finalize(outdir, symbol, detected_at, meta, samples, klines, t0_ms,
                           detected_at + timedelta(seconds=first_price_mono - detect_mono),
-                          first_price_mono - detect_mono, "following", log)
+                          first_price_mono - detect_mono, "following", log,
+                          dashboard_min_interval=20)
             except Exception as e:
                 log(f"[{symbol}] klines: {e}")
             if _sleep(kline_poll):

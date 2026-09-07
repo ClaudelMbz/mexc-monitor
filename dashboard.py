@@ -1,8 +1,13 @@
 """Genere data/dashboard.html : tableau recap de tous les listings detectes."""
 import json
+import threading
+import time
 from datetime import datetime, timezone
 
 from config import DATA_DIR, LISTINGS_DIR, atomic_write
+
+_lock = threading.Lock()
+_last_build = 0.0
 
 
 def _fmt(v, suffix=""):
@@ -15,7 +20,20 @@ def _color(v):
     return "#22c55e" if v >= 0 else "#ef4444"
 
 
-def build_dashboard():
+def build_dashboard(min_interval=0.0):
+    """Regenere data/dashboard.html. `min_interval` : ne rien faire si un build
+    a eu lieu il y a moins de N secondes (anti-rafale quand plusieurs threads
+    de suivi appellent en meme temps). Un lock serialise les ecritures."""
+    global _last_build
+    with _lock:
+        if min_interval and time.monotonic() - _last_build < min_interval:
+            return None
+        path = _build_dashboard_locked()
+        _last_build = time.monotonic()
+        return path
+
+
+def _build_dashboard_locked():
     rows = []
     dirs = sorted(LISTINGS_DIR.iterdir(), reverse=True) if LISTINGS_DIR.exists() else []
     for d in dirs:
